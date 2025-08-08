@@ -1,73 +1,87 @@
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwgiP2NGy-WATFWXj3ud-3n__nc4o95cUcdFoqPDSahiLZkQzra-Dr0trkofryhjcU/exec";
-const board = document.getElementById('board');
-let current = null;
-let placed = []; // {id,x,y}
+<script>
+/** ====== 設定 ====== */
+const ENDPOINT =
+  "https://script.google.com/macros/s/AKfycbwgiP2NGy-WATFWXj3ud-3n__nc4o95cUcdFoqPDSahiLZkQzra-Dr0trkofryhjcU/exec";
 
-document.querySelectorAll('.pick').forEach(b=>{
-  b.addEventListener('click', ()=>{
-    current = b.dataset.id;
-    document.querySelectorAll('.pick').forEach(x=>x.classList.toggle('on', x===b));
+/** ====== 状態 ====== */
+const board  = document.getElementById('board');
+let current  = null;          // 今選んでるオブジェクトID（'A' | 'B' | 'C'）
+let placed   = [];            // [{id, x, y}, ...]
+let sending  = false;         // 二重送信防止
+
+/** ====== UI: ピックボタン ====== */
+document.querySelectorAll('.pick').forEach(btn => {
+  btn.addEventListener('click', () => {
+    current = btn.dataset.id;
+    document.querySelectorAll('.pick')
+      .forEach(x => x.classList.toggle('on', x === btn));
   });
 });
 
-function snap(v, g=36){ return Math.round(v/g)*g; }
+/** ====== 盤面：クリックで配置 ====== */
+const GRID = 36;
+const snap = (v) => Math.round(v / GRID) * GRID;
 
-board.addEventListener('click', e=>{
-  if(!current) return alert('左上のボタンでオブジェクトを選んでね');
-  if(placed.length>=3) return alert('配置は3つまで');
+board.addEventListener('click', (e) => {
+  if (!current)        return alert('左上のボタンでオブジェクトを選んでね');
+  if (placed.length>=3) return alert('配置は3つまで');
+
   const rect = board.getBoundingClientRect();
-  const x = snap(e.clientX-rect.left);
-  const y = snap(e.clientY-rect.top);
+  const x = snap(e.clientX - rect.left);
+  const y = snap(e.clientY - rect.top);
 
-  const d = document.createElement('div');
-  d.className = `dot ${current}`;
-  d.textContent = current;
-  d.style.left = x+'px';
-  d.style.top  = y+'px';
-  board.appendChild(d);
+  // 範囲外クリックを無視（見切れ防止）
+  if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
 
-  placed.push({id:current, x, y});
+  const dot = document.createElement('div');
+  dot.className   = `dot ${current}`;
+  dot.textContent = current;
+  dot.style.left  = x + 'px';
+  dot.style.top   = y + 'px';
+  board.appendChild(dot);
+
+  placed.push({ id: current, x, y });
 });
 
-document.getElementById('fb').addEventListener('submit', async (e)=>{
+/** ====== 送信 ====== */
+document.getElementById('fb').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if(placed.length!==3) return alert('3つ置いてから送信してね');
+  if (sending) return;
+  if (placed.length !== 3) return alert('3つ置いてから送信してね');
 
-  const data = Object.fromEntries(new FormData(e.target).entries());
-  data.placed = placed;
-
-try {
-  // 送るデータを整形（フォーム値 + 配置 + UA）
+  const fd = new FormData(e.target);
   const payload = {
-    ...data,                 // who/when/why
-    placements: placed,      // 配置点（Apps Script 側で読むキー）
-    ua: navigator.userAgent, // 端末情報（任意）
+    who:  fd.get('who'),
+    when: fd.get('when'),
+    why:  fd.get('why'),
+    placements: placed,
+    ua: navigator.userAgent,
+    ts: Date.now()
   };
 
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    // プリフライト回避のため text/plain で送る（Apps Script 側もそれ前提で実装済み）
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-  });
+  try {
+    sending = true;
 
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.ok !== true) throw new Error('send failed');
+    // CORSプリフライトを避ける。レスポンスは読まない（opaque）
+    await fetch(ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
 
-  alert('送信しました！');
-} catch (err) {
-  console.error(err);
-  alert('送信に失敗しました。ネットワーク or 権限設定を確認してね。');
-} finally {
-  // 盤面クリア＆フォームリセット
-  board.querySelectorAll('.dot').forEach(n => n.remove());
-  placed = [];
-  e.target.reset();
-}
-
-  alert('ダミー送信完了（コンソールを見てね）');
-
-  board.querySelectorAll('.dot').forEach(n=>n.remove());
-  placed = [];
-  e.target.reset();
+    alert('送信しました！（シート側で反映を確認してね）');
+  } catch (err) {
+    console.error(err);
+    alert('送信に失敗しました。ネットワーク or 権限設定を確認してね。');
+  } finally {
+    // 盤面クリア＆フォームリセット
+    board.querySelectorAll('.dot').forEach(n => n.remove());
+    placed = [];
+    e.target.reset();
+    document.querySelectorAll('.pick').forEach(x => x.classList.remove('on'));
+    current = null;
+    sending = false;
+  }
 });
+</script>
