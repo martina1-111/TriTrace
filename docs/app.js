@@ -1,3 +1,4 @@
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwgiP2NGy-WATFWXj3ud-3n__nc4o95cUcdFoqPDSahiLZkQzra-Dr0trkofryhjcU/exec";
 const board = document.getElementById('board');
 let current = null;
 let placed = []; // {id,x,y}
@@ -35,8 +36,35 @@ document.getElementById('fb').addEventListener('submit', async (e)=>{
   const data = Object.fromEntries(new FormData(e.target).entries());
   data.placed = placed;
 
-  // TODO: Google Apps Script のURLに変更
-  console.log('送信データ', data);
+try {
+  // 送るデータを整形（フォーム値 + 配置 + UA）
+  const payload = {
+    ...data,                 // who/when/why
+    placements: placed,      // 配置点（Apps Script 側で読むキー）
+    ua: navigator.userAgent, // 端末情報（任意）
+  };
+
+  const res = await fetch(ENDPOINT, {
+    method: 'POST',
+    // プリフライト回避のため text/plain で送る（Apps Script 側もそれ前提で実装済み）
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok !== true) throw new Error('send failed');
+
+  alert('送信しました！');
+} catch (err) {
+  console.error(err);
+  alert('送信に失敗しました。ネットワーク or 権限設定を確認してね。');
+} finally {
+  // 盤面クリア＆フォームリセット
+  board.querySelectorAll('.dot').forEach(n => n.remove());
+  placed = [];
+  e.target.reset();
+}
+
   alert('ダミー送信完了（コンソールを見てね）');
 
   board.querySelectorAll('.dot').forEach(n=>n.remove());
