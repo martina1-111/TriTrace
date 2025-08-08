@@ -1,13 +1,41 @@
-<!doctype html>
-<html lang="ja">
+<!doctype html><html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>TriTrace AR</title>
-  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TriTrace AR</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>TriTrace AR（公開テスト）</h1>
-  <p>このページが見えたら GitHub Pages の準備OK。ここにWebAR本体を入れていきます。</p>
-</body>
-</html>
+<h1>TriTrace：配置テスト</h1>
+
+<div class="toolbar">
+  <button class="pick" data-id="A">A</button>
+  <button class="pick" data-id="B">B</button>
+  <button class="pick" data-id="C">C</button>
+  <span class="hint">選択→盤面タップで最大3個配置</span>
+</div>
+
+<div id="board"></div>
+
+<form id="fb">
+  <h2>フィードバック</h2>
+  <label>WHO
+    <select name="who">
+      <option>大人</option><option>子ども</option><option>高齢者</option>
+    </select>
+  </label>
+  <label>WHEN
+    <select name="when">
+      <option>朝</option><option>昼</option><option>夜</option>
+    </select>
+  </label>
+  <label>WHY
+    <select name="why">
+      <option>待っている</option><option>探している</option><option>休んでいる</option>
+    </select>
+  </label>
+  <button type="submit">送信</button>
+</form>
+
+<script src="app.js"></script>
+</body></html>
